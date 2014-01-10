@@ -40,19 +40,20 @@ using namespace std;
 #define CUBICUT 0
 #define PRINTF_DEBUG 0
 #define FRAME_DIFF 1
-#define CSV_RECORD 1
+#define CSV_RECORD_LONG_PERIOD 1
+#define CSV_RECORD 0
 
 //---------------------------------------------------------------------------
 // Defines
 //---------------------------------------------------------------------------
 #define SAMPLE_XML_PATH "../../Config/SamplesConfig.xml"
 #define SAMPLE_XML_PATH_LOCAL "SamplesConfig.xml"
-#define FRAME_NUM_MAX 30
+#define FRAME_NUM_MAX 35
 #define FRAME_WIDTH 640
 #define FRAME_HEIGHT 480
 #define CUT_X (FRAME_WIDTH / 2)
 #define CUT_Y (FRAME_HEIGHT / 2)
-#define CSV_FILE "test.csv"
+#define CSV_FILE "large_movement.csv"
 #define DEPTH_THRESHOLD 100
 
 //---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ int main()
 	int per_frame_depth[FRAME_WIDTH][FRAME_HEIGHT];
 #endif
 
-#if CSV_RECORD
+#if CSV_RECORD || CSV_RECORD_LONG_PERIOD
 	ofstream ofs(CSV_FILE);
 #endif
 
@@ -183,6 +184,7 @@ int main()
 		}
 		/* CubiCut End */
 #endif
+
 #if CSV_RECORD
 		ofs << "frame" << frame_id << endl;
 		for (j=0; j<FRAME_HEIGHT; j++) {
@@ -206,6 +208,31 @@ int main()
 				} else {
 					ofs << ",";
 				}
+			}
+		}
+		ofs << endl;
+#endif
+#if CSV_RECORD_LONG_PERIOD
+		if (-1 < frame_id && frame_id < 5) {
+			continue;
+		} 
+		for (j=0; j<FRAME_HEIGHT; j++) {
+			for (i=0; i<FRAME_WIDTH; i++) {
+				// first frame
+				if (frame_id == 5) {
+					per_frame_depth[i][j] = (int)depthMD(i, j); 
+					ofs << (int)depthMD(i, j);
+				} else {
+					// frame difference
+					diff = abs((int)depthMD(i, j) - per_frame_depth[i][j]);
+					if (diff < DEPTH_THRESHOLD) {
+						diff = 0;
+					}
+					ofs << diff;
+				}
+				
+				// comma or next row
+				ofs << ",";
 			}
 		}
 		ofs << endl;
