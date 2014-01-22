@@ -37,10 +37,10 @@ using namespace std;
 //---------------------------------------------------------------------------
 // Module Defines
 //---------------------------------------------------------------------------
-#define CUBICUT 0
+#define CUBICUT 1
 #define PRINTF_DEBUG 0
 #define FRAME_DIFF 1
-#define CSV_RECORD_LONG_PERIOD 1
+#define CSV_RECORD_LONG_PERIOD 0
 #define CSV_RECORD 0
 
 //---------------------------------------------------------------------------
@@ -49,11 +49,10 @@ using namespace std;
 #define SAMPLE_XML_PATH "../../Config/SamplesConfig.xml"
 #define SAMPLE_XML_PATH_LOCAL "SamplesConfig.xml"
 #define FRAME_NUM_MAX 35
-#define FRAME_WIDTH 640
-#define FRAME_HEIGHT 480
+#define FRAME_WIDTH 320
+#define FRAME_HEIGHT 240
 #define CUT_X (FRAME_WIDTH / 2)
 #define CUT_Y (FRAME_HEIGHT / 2)
-#define CSV_FILE "large_movement.csv"
 #define DEPTH_THRESHOLD 100
 
 //---------------------------------------------------------------------------
@@ -79,10 +78,17 @@ XnBool fileExists(const char *fn)
 	return exists;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-	XnStatus nRetVal = XN_STATUS_OK;
 
+	if (argc != 2) {
+		cout << "Usage: ./DepthRecorder [output file path]";
+		return -1;
+	}
+	char *csv_file;
+	csv_file = argv[1];
+	
+	XnStatus nRetVal = XN_STATUS_OK;
 	Context context;
 	ScriptNode scriptNode;
 	EnumerationErrors errors;
@@ -124,19 +130,21 @@ int main()
 	int frame_id;
 
 #if CUBICUT
-	int x_time_rectangle[FRAME_WIDTH][FRAME_NUM_MAX];
-	int y_time_rectangle[FRAME_HEIGHT][FRAME_NUM_MAX];
+	//int x_time_rectangle[FRAME_WIDTH][FRAME_NUM_MAX];
+	//int y_time_rectangle[FRAME_HEIGHT][FRAME_NUM_MAX];
+	int save_width[FRAME_WIDTH];
+	int save_height[FRAME_HEIGHT];
 #endif
 
 #if FRAME_DIFF
 	int per_frame_depth[FRAME_WIDTH][FRAME_HEIGHT];
 #endif
 
-#if CSV_RECORD || CSV_RECORD_LONG_PERIOD
-	ofstream ofs(CSV_FILE);
+#if CSV_RECORD || CSV_RECORD_LONG_PERIOD || CUBICUT
+	ofstream ofs(argv[1]);
 #endif
 
-
+	printf("%s\n", "Start !!");
 	while (!xnOSWasKeyboardHit())
 	{
 		nRetVal = context.WaitOneUpdateAll(depth);
@@ -154,34 +162,42 @@ int main()
 
 #if CUBICUT
 		/* CubiCut Start */
-		
+		if (-1 < frame_id && frame_id < 5) {
+			continue;
+		} 
+	
 		for (i=0; i<FRAME_WIDTH; i++) {
 			// first frame
-			if (!frame_id) {
-				x_time_rectangle[i][frame_id] = (int)depthMD(i, CUT_Y);
+			if (frame_id == 5) {
+				save_width[i] = (int)depthMD(i, CUT_Y);
+				ofs << (int)depthMD(i, CUT_Y);
 			} else {
-				diff = abs((int)depthMD(i, CUT_Y) - x_time_rectangle[i][0]);
+				diff = abs((int)depthMD(i, CUT_Y) - save_width[i]);
 				if (diff > 100) {
-					x_time_rectangle[i][frame_id] = diff;
+					ofs << diff;
 				} else {
-					x_time_rectangle[i][frame_id] = 0;
+					ofs << 0;
 				}
 			}
+			ofs << ",";
 		}
 
 		for (j=0; j<FRAME_HEIGHT; j++) {
 			// first frame
-			if (!frame_id) {
-				y_time_rectangle[j][frame_id] = (int)depthMD(i, CUT_X);
+			if (frame_id == 5) {
+				save_height[j] = (int)depthMD(CUT_X, j);
+				ofs << (int)depthMD(CUT_X, j);
 			} else {
-				diff = abs((int)depthMD(j, CUT_X) - y_time_rectangle[j][0]);
+				diff = abs((int)depthMD(CUT_X, j) - save_height[j]);
 				if (diff > 100) {
-					y_time_rectangle[j][frame_id] = diff;
+					ofs << diff;
 				} else {
-					y_time_rectangle[j][frame_id] = 0;
+					ofs << 0;
 				}
 			}
+			ofs << ",";
 		}
+		ofs << endl;
 		/* CubiCut End */
 #endif
 
